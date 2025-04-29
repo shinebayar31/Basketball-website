@@ -1,0 +1,17 @@
+{
+    "name": "basketball-website",
+    "version": "1.0.0",
+    "scripts": {
+        "start": "concurrently \"npm run server\" \"npm run client\"",
+        "server": "cd server && node index.js",
+        "client": "cd client && npm start"
+    },
+    "devDependencies": {
+        "concurrently": "^8.2.2"
+    },
+    "dependencies": {
+        "argon2": "^0.43.0",
+        "mongoose": "^8.13.3",
+        "react-icons": "^5.5.0"
+    }
+}
