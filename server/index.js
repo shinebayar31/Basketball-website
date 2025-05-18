@@ -15,10 +15,6 @@ mongoose.connect(process.env.MONGO_URI)
 // Routes
 app.use('/api', require('./routes/auth')); // энд auth route-г холбоно
 
-// Sample API
-app.get('/api/hello', (req, res) => {
-  res.json({ message: 'Сайн байна уу!' });
-});
 
 // Сервер асаах
 const PORT = process.env.PORT || 5000;

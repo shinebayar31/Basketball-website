@@ -5,6 +5,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const validator = require('validator');
 
+
 // Registration endpoint
 router.post('/register', async (req, res) => {
   const { username, phone, email, password } = req.body;
@@ -29,7 +30,12 @@ router.post('/register', async (req, res) => {
     if (existingUsername) {
       return res.status(400).json({ error: "Хэрэглэгчийн нэр бүртгэлтэй байна" });
     }
-    console.log('Нууц үг:', password);
+
+    // Check if phone already exists
+    const existingPhone = await User.findOne({ phone });
+    if (existingPhone) {
+      return res.status(400).json({ error: "Утасны дугаар бүртгэлтэй байна" });
+    }
 
     //const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -37,7 +43,7 @@ router.post('/register', async (req, res) => {
       username,
       phone,
       email,
-      password:password,
+      password: password,
       //password: hashedPassword,
     });
 
@@ -55,7 +61,8 @@ router.post('/register', async (req, res) => {
       user: {
         id: newUser._id,
         username: newUser.username,
-        email: newUser.email
+        email: newUser.email,
+        phone: newUser.phone
       }
     });
   } catch (err) {
@@ -63,6 +70,73 @@ router.post('/register', async (req, res) => {
     res.status(500).json({ error: "Серверийн алдаа" });
   }
 });
+
+// Хэрэглэгчийн мэдээлэл шинэчлэх PUT /api/users/:id
+router.put('/:id', async (req, res) => {
+  const { id } = req.params;
+  const { username, phone, email, password } = req.body;
+
+  try {
+    // Хэрэглэгч олж авна
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ error: "Хэрэглэгч олдсонгүй" });
+    }
+
+    // Шинэ email, username, phone давхцал шалгах (өөр хэрэглэгчдэд байвал алдаа гаргана)
+    if (email && email !== user.email) {
+      const emailExists = await User.findOne({ email });
+      if (emailExists) {
+        return res.status(400).json({ error: "Имэйл бүртгэлтэй байна" });
+      }
+      if (!validator.isEmail(email)) {
+        return res.status(400).json({ error: "Имэйл формат буруу байна!" });
+      }
+      user.email = email;
+    }
+
+    if (username && username !== user.username) {
+      const usernameExists = await User.findOne({ username });
+      if (usernameExists) {
+        return res.status(400).json({ error: "Хэрэглэгчийн нэр бүртгэлтэй байна" });
+      }
+      user.username = username;
+    }
+
+    if (phone && phone !== user.phone) {
+      const phoneExists = await User.findOne({ phone });
+      if (phoneExists) {
+        return res.status(400).json({ error: "Утасны дугаар бүртгэлтэй байна" });
+      }
+      user.phone = phone;
+    }
+
+    // Нууц үг шинэчлэгдэхэд bcrypt ашиглан хадгална
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      user.password = hashedPassword;
+    }
+
+    // Өөр бусад талбаруудыг мөн шинэчлэж болно...
+
+    await user.save();
+
+    res.json({
+      message: "Мэдээлэл амжилттай шинэчлэгдлээ",
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        phone: user.phone
+      }
+    });
+
+  } catch (err) {
+    console.error("Мэдээлэл шинэчлэх алдаа:", err);
+    res.status(500).json({ error: "Серверийн алдаа" });
+  }
+});
+
 
 // Login endpoint
 router.post('/login', async (req, res) => {
@@ -82,10 +156,8 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: "Хэрэглэгчийн нэр эсвэл нууц үг буруу" });
     }
     console.log('Орж ирсэн нууц үг:', password);
-console.log('Хадгалсан нууц үг (hashed):', user.password);
 
     const isMatch = await bcrypt.compare(password, user.password);
-    console.log('Нууц үг match байна уу?', isMatch);
     if (!isMatch) {
       return res.status(401).json({ error: "Хэрэглэгчийн нэр эсвэл нууц үг буруу" });
     }
@@ -102,7 +174,8 @@ console.log('Хадгалсан нууц үг (hashed):', user.password);
       user: {
         id: user._id,
         username: user.username,
-        email: user.email
+        email: user.email,
+        phone: user.phone
       }
     });
   } catch (err) {
